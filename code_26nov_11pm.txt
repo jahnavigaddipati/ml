@@ -1,0 +1,864 @@
+# scene_recognition_model.py
+
+import os
+
+import numpy as np
+import tensorflow as tf
+from keras.utils.np_utils import to_categorical
+
+from cnn_architecture.TransferFunction import TransferFunction, ReLuActivationFunc, SoftMaxActivationFunc
+from cnn_architecture.Convolutional2D import Convolutional2DLayer
+from cnn_architecture.CNN import NN
+from cnn_architecture.FullyConnected import FullyConnectedLayer
+from cnn_architecture.FlattenLayer import FlattenLayer
+from cnn_architecture.MaxPooling import MaximumPoolingLayer
+from cnn_architecture.utils import AdamOptimizer, CalCrossEntropy, SquaredLoss
+
+def get_dataset():
+    """Download image classification dataset from kaggle.
+    
+    This does the following:
+    1. use the kaggle API key to download the dataset from kaggle 
+    2. unzip the data 
+    3. renaming the downloaded data folders and rearranging it for ease of use
+    """
+    # 1. download dataset from kaggle
+    os.system("pip install kaggle terminaltables")
+    os.system("mkdir ~/.kaggle")
+    os.system("cp kaggle.json ~/.kaggle/")
+    os.system("kaggle datasets download -d puneet6060/intel-image-classification")
+
+    # 2. unzipping downloaded data
+    os.system("rm -rf seg_test seg_train seg_val")
+    os.system("unzip -o intel-image-classification.zip &> /dev/null")
+    
+    # 3. rearranging data folders for ease of use
+    os.system("mkdir seg_val && mv seg_test/seg_test/** seg_val/ && rm -rf seg_test**")
+    os.system("mkdir seg_test && mv seg_pred/seg_pred/** seg_test/ && rm -rf seg_pred**")
+    os.system("mv seg_train/seg_train/** seg_train/ && rm -rf seg_train/seg_train")
+
+class CNNModel:
+    """
+    A class to build a CNN model. 
+    
+    Attributes:
+    n_inputs: Any
+        number of inputs to the model (image shape)
+    n_outputs: Any
+        number of outputs (output neurons)
+    val_datas: Any
+        validation data
+
+    Methods:
+    get_model():
+        returns the NeuralNetwork class object.
+    """
+    
+    def __init__(self, total_inputs, total_outputs, validation_data):
+        """Constructs all the necessary attributes for the model object."""
+        
+        cnn = NN(type_of_enhancer=AdamOptimizer(), loss_function=CalCrossEntropy, validation_data=validation_data)
+        # added one more layer 
+        cnn.build(Convolutional2DLayer(size_of_input=total_inputs, filter_amount=8, size_of_kernel=(2, 2), stride=1, type_of_padding='same'))
+        cnn.build(TransferFunction(ReLuActivationFunc))
+        cnn.build(MaximumPoolingLayer(pool_shape_size=(2, 2), stride=2, type_of_padding='same'))
+
+        cnn.build(Convolutional2DLayer(filter_amount=16, size_of_kernel=(2, 2), stride=1, type_of_padding='same'))
+        cnn.build(TransferFunction(ReLuActivationFunc))
+        cnn.build(MaximumPoolingLayer(pool_shape_size=(2, 2)))  # Valid padding
+
+        cnn.build(Convolutional2DLayer(filter_amount=32, size_of_kernel=(2, 2), stride=1, type_of_padding='same'))
+        cnn.build(TransferFunction(ReLuActivationFunc))
+        cnn.build(MaximumPoolingLayer(pool_shape_size=(2, 2)))  # Valid padding
+
+        cnn.build(Convolutional2DLayer(filter_amount=64, size_of_kernel=(2, 2), stride=1, type_of_padding='same'))
+        cnn.build(TransferFunction(ReLuActivationFunc))
+        cnn.build(MaximumPoolingLayer(pool_shape_size=(2, 2)))  # Valid padding
+        
+        cnn.build(Convolutional2DLayer(filter_amount=128, size_of_kernel=(2, 2), stride=1, type_of_padding='same'))
+        cnn.build(TransferFunction(ReLuActivationFunc))
+        cnn.build(MaximumPoolingLayer(pool_shape_size=(2, 2)))  # Valid padding
+    
+        cnn.build(FlattenLayer())
+        cnn.build(FullyConnectedLayer(256))
+        cnn.build(TransferFunction(ReLuActivationFunc))
+
+        cnn.build(FullyConnectedLayer(256))
+        cnn.build(TransferFunction(ReLuActivationFunc))
+
+        cnn.build(FullyConnectedLayer(total_outputs))
+        cnn.build(TransferFunction(SoftMaxActivationFunc))
+
+        self.model = cnn
+
+    def get_model(self):
+        """ Returns the model object. """
+        
+        return self.model
+
+print("\n******************************** GETTING DATASET ********************************\n")
+get_dataset()
+
+print(CNNModel.__doc__)
+# train and validation directories
+train_directory = './seg_train'
+val_directory = './seg_val'
+
+
+# defining batch size and image size 
+SIZE_OF_BATCH = 32
+SIZE_OF_IMAGE = (154, 154)
+
+# creating a tensorflow dataset using the training images
+dataset_for_training = tf.keras.utils.image_dataset_from_directory(
+    train_directory,
+    seed=123,
+    image_size=SIZE_OF_IMAGE,
+    batch_size=SIZE_OF_BATCH
+    )
+
+# creating a tensorflow dataset using the validation images
+dataset_for_validation = tf.keras.utils.image_dataset_from_directory(
+    val_directory,
+    seed=123,
+    image_size=SIZE_OF_IMAGE,
+    batch_size=SIZE_OF_BATCH
+    )
+
+# TODO: is this required? or can it be removed?
+categories = dataset_for_training.class_names
+print(categories)
+
+# added by soha
+# TODO: remove when running the final time
+dataset_for_training = dataset_for_training.take(10)
+dataset_for_validation = dataset_for_validation.take(10)
+
+print("\n******************************** RESCALING AND PREPROCESSING ********************************\n")
+
+adjusting_range = tf.keras.layers.Rescaling(1. / 255)
+dataset_for_training = dataset_for_training.map(lambda x, y: (adjusting_range(x), y))
+dataset_for_validation = dataset_for_validation.map(lambda x, y: (adjusting_range(x), y))
+
+image_features_batch, categories_batch = next(iter(dataset_for_training))
+first_image = image_features_batch[0]
+print("Min and max values after rescaling:", np.min(first_image), np.max(first_image))
+
+def preprocess_input(dataset):
+    """Returns preprocessed input. 
+    
+    Parameters: 
+    dataset: Any
+        takes in tensorflow Dataset type dataset (train and validation)
+        and returns the split after separating labels from the features.
+    """
+    X = []
+    y = []
+    for image_features_batch, categories_batch in dataset:
+        for i in range(SIZE_OF_BATCH):
+            if i < image_features_batch.shape[0]:
+                X.append(image_features_batch[i].numpy())
+                y.append(categories_batch[i].numpy())
+    X = np.array(X)
+    y = np.array(y)
+
+    X = np.moveaxis(X, -1, 1)
+    y = to_categorical(y.astype("int"))
+
+    return X, y
+
+# separating features from the labels using preprocess_input
+X_train, y_train = preprocess_input(dataset_for_training)
+X_val, y_val = preprocess_input(dataset_for_validation)
+print("\nShape of X_train, y_train:", X_train.shape, y_train.shape)
+
+total_epochs = 10
+SHAPE_OF_IMAGE = (3,) + SIZE_OF_IMAGE
+total_outputs = 6
+cnn = CNNModel(total_inputs=SHAPE_OF_IMAGE, total_outputs=total_outputs, validation_data=(X_val, y_val)).get_model()
+
+print("\n******************************** SUMMARY OF CNN MODEL ********************************\n")
+cnn.model_summary()
+
+# Model training
+print("\n******************************** MODEL TRAINING ********************************\n")
+training_error, validation_error, training_accuracy, validation_accuracy = cnn.fit(X_train, y_train, total_epochs=total_epochs, size_of_batch=SIZE_OF_BATCH)
+
+print("\n******************************** MODEL PERFORMANCE AND EVALUATION ********************************\n")
+print("\nTrain Accuracy: {:.4f}".format(100 * training_accuracy[-1]))
+print("Validation Accuracy: {:.4f}".format(100 * validation_accuracy[-1]))
+print("\nTrain Loss: {:.4f}".format(training_error[-1]))
+print("Validation Loss: {:.4f}".format(validation_error[-1]))
+
+# BaseLayer.py
+
+class BaseLayer(object):
+    """A class that defines the basic structure of all the methods used in all the other layers. 
+        
+    Methods
+    -------
+    set_input(self, shape):
+        defines the input size
+
+    def backward_feed(self, total_grad):
+      takes care of the backward flow of the layer
+
+    def forward_flow(self, X, training):
+        takes care of the front flow of the layer
+ 
+    def return_out(self):
+        returns the output
+
+    """
+    def __init__(self):
+        self.size_of_input = None
+
+    def set_input(self, shape):
+        self.size_of_input = shape
+
+    def get_total_parameters(self):
+        return 0
+
+    def name(self):
+        return self.__class__.__name__
+        
+    def backward_feed(self, total_grad):
+        raise NotImplementedError()
+
+    def forward_feed(self, X, training):
+        raise NotImplementedError()
+
+    def return_out(self):
+        raise NotImplementedError()
+
+# CNN.py
+
+from datetime import datetime
+
+from terminaltables import AsciiTable
+import numpy as np
+
+from cnn_architecture.utils import iter_batch, get_time_diff
+
+
+class NN:
+
+    def __init__(self, type_of_enhancer, loss_function, validation_data=None):
+        self.layers_list = []
+        self.type_of_enhancer = type_of_enhancer
+        self.loss_function = loss_function()
+        self.er_dict = {"validation": [], "training": []}
+        self.validset = None
+        if validation_data:
+            X, y = validation_data
+            self.validset = {"X": X, "y": y}
+
+    # Implementing the add function for the layers
+    def build(self, layer_obj):
+        if self.layers_list:
+            layer_obj.set_input(shape=self.layers_list[-1].return_out())
+        if hasattr(layer_obj, 'initialize_value'):
+            layer_obj.initialize_value(enhancer=self.type_of_enhancer)
+        self.layers_list.append(layer_obj)
+
+    # Function to calculate loss and accuracy for test data
+    def batch_eval_test(self, X, y):
+        predicted_y = self._frnt_propogation(X, training=False)
+        error_value = np.mean(self.loss_function.loss(y, predicted_y))
+        acc_value = self.loss_function.calculate_accuracy(y, predicted_y)
+        return error_value, acc_value
+
+    # Function to calculate loss and accuracy for train data
+    def batch_eval_train(self, X, y):
+        predicted_y = self._frnt_propogation(X)
+        error_value = np.mean(self.loss_function.loss(y, predicted_y))
+        acc_value = self.loss_function.calculate_accuracy(y, predicted_y)
+        gradient_error = self.loss_function.gradient(y, predicted_y)
+        self._bwd_propogation(loss_gradient=gradient_error)
+        return error_value, acc_value
+
+    # Function to fit the data to the model
+    def fit(self, X, y, total_epochs, size_of_batch):
+        accuracy_train = []
+        accuracy_validation = []
+        begin_time = datetime.now()
+        for epoch in range(total_epochs):
+            loss_of_batch = []
+            batch_accuracy_train = []
+            val_acc_value = 0
+            batch = 1
+            epoch_begin_time = datetime.now()
+            for X_batch, y_batch in iter_batch(X, y, size_of_batch=size_of_batch):
+                err, train_acc = self.batch_eval_train(X_batch, y_batch)
+                loss_of_batch.append(err)
+                batch_accuracy_train.append(train_acc)
+                print("Training for epoch:{} batch:{} in time:{} | loss={:.2f}, accuracy={:.2f}"
+                      .format(epoch, batch, get_time_diff(epoch_begin_time), err, train_acc), end='\r')
+                batch += 1
+            print("")
+
+            if self.validset is not None:
+                val_err, val_acc_value = self.batch_eval_test(self.validset["X"], self.validset["y"])
+                self.er_dict["validation"].append(val_err)
+
+            avg_train_loss = np.mean(loss_of_batch)
+            avg_train_acc = np.mean(batch_accuracy_train)
+            accuracy_train.append(avg_train_acc)
+            accuracy_validation.append(val_acc_value)
+
+            self.er_dict["training"].append(avg_train_loss)
+            print("Training loop complete for epoch:{} in time:{} | train_loss:{:.2f} train_accuracy:{:.2f} | val_loss:{:.2f} val_accuracy:{:.2f}"
+                    .format(epoch, get_time_diff(epoch_begin_time), avg_train_loss, avg_train_acc, val_err, val_acc_value)
+                 )
+            print("\n")
+
+        print("Final accuracy:{:.2f} | Time taken:{}".format(accuracy_validation[-1], get_time_diff(begin_time)))
+        return self.er_dict["training"], self.er_dict["validation"], accuracy_train, accuracy_validation
+
+    # Defining forward pass
+    def _frnt_propogation(self, X, training=True):
+        l_out = X
+        for l in self.layers_list:
+            l_out = l.forward_feed(l_out, training)
+        return l_out
+
+    # Defining backward pass
+    def _bwd_propogation(self, loss_gradient):
+        for l in reversed(self.layers_list):
+            loss_gradient = l.backward_feed(loss_gradient)
+
+    # Defining summary for the model
+    def model_summary(self, name="Summary of Model"):
+        print(AsciiTable([[name]]).table)
+        print("Input Shape: %s" % str(self.layers_list[0].size_of_input))
+        print("\n")
+        table_row = [["Layer Name", "Total Parameters", "Output Shape"]]
+        sum_of_params = 0
+        for layer in self.layers_list:
+            layer_name = layer.name()
+            params = layer.get_total_parameters()
+            shape_of_op = layer.return_out()
+            table_row.append([layer_name, str(params), str(shape_of_op)])
+            # new
+            table_row.append([])
+            sum_of_params += params
+        print(AsciiTable(table_row).table)
+        print("Total Parameters are: %d\n" % sum_of_params)
+
+    # Defining predict function
+    def predict(self, X):
+        return self._frnt_propogation(X, training=False)
+
+# Convolutional2D.py
+
+from cnn_architecture.BaseLayer import BaseLayer
+from cnn_architecture.utils import apply_padding, image_convert_2_column, column_convert_2_image
+import numpy as np
+import math
+import copy as cp
+
+class Convolutional2DLayer(BaseLayer):
+    """A class that defines all the methods and specifications for the convolutional layer. 
+    
+    Attributes
+    ----------
+    number_of_filter: Any
+        the number of filters passed to the layer
+    f_size: Any
+        this is the size for the filter/kernel that will slide over the input image pixels. for eg. (3,3)
+    size_of_input: Any | None
+        the size of the input image pixels. for eg. (100,100)
+    stride: int
+        this is a parameter of the filter that decides the amount of movement over the image
+    type_of_padding: str
+        the padding value. this can be either "same" or "valid"
+        
+    Methods
+    -------
+    initialize_values(optimizer):
+        takes in the specified optimizer and initializes values for channels, weights and so on.
+    
+    params():
+        returns the total number of parameters for the particular convolutional layer.
+    
+    forward_feed(X, train=True):
+        defines the forward flow of input values. it makes use of utility methods to apply the filter to the input values.
+        this returns the output after the filter has been applied to the input values.
+    
+    backward_feed(total_grad):
+        defines the backward flow from the output layer. returns the total gradient.
+        
+    return_out():
+        returns the output in the form of the filter count, and the adjusted weights.
+    """
+    def __init__(self, filter_amount, size_of_kernel, size_of_input=None, stride=1, type_of_padding='same'):
+        self.size_of_input = size_of_input
+        self.filter_amount = filter_amount
+        self.type_of_padding = type_of_padding
+        self.size_of_kernel = size_of_kernel
+        self.stride = stride
+
+    def initialize_value(self, enhancer):
+        filter_height, filter_width = self.size_of_kernel
+        to_calculate_weight = 1 / math.sqrt(np.prod(self.size_of_kernel))
+        channel = self.size_of_input[0]
+        self.weight = np.random.uniform(-to_calculate_weight, to_calculate_weight, size=(self.filter_amount, channel, filter_height, filter_width))
+        self.weight0 = np.zeros((self.filter_amount, 1))
+        self.weight_opt = cp.copy(enhancer)
+        self.weight0_opt = cp.copy(enhancer)
+
+    def get_total_parameters(self):
+        weight0_shape = self.weight0.shape
+        weight_shape = self.weight.shape
+        # TODO: remove print statement
+        print(str(weight0_shape) + " " + str(weight_shape))
+        return np.prod(weight0_shape) + np.prod(weight_shape)
+
+    def forward_feed(self, X, train=True):
+        size_of_batch, channel, train_height, train_width = X.shape
+        self.in_layer = X
+        self.Wcol = self.weight.reshape((self.filter_amount, -1))
+        self.Xcol = image_convert_2_column(X, self.size_of_kernel, output=self.type_of_padding, stride=self.stride)
+        result = self.Wcol.dot(self.Xcol) + self.weight0
+        result = result.reshape(self.return_out() + (size_of_batch,))
+        return result.transpose(3, 0, 1, 2)
+
+    def return_out(self):
+        c, train_height, train_width = self.size_of_input
+        padding_ht, padding_wt = apply_padding(self.size_of_kernel, type_of_padding=self.type_of_padding)
+        height_output = (train_height + np.sum(padding_ht) - self.size_of_kernel[0]) / self.stride + 1
+        width_output = (train_width + np.sum(padding_wt) - self.size_of_kernel[1]) / self.stride + 1
+        return self.filter_amount, int(height_output), int(width_output)
+
+    def backward_feed(self, gradient_sum):
+        gradient_sum = gradient_sum.transpose(1, 2, 3, 0)
+        gradient_sum = gradient_sum.reshape(self.filter_amount, -1)
+        grad_weight = gradient_sum.dot(self.Xcol.T).reshape(self.weight.shape)
+        grad_weight0 = np.sum(gradient_sum, keepdims=True, axis=1, )
+        self.weight = self.weight_opt.update(self.weight, grad_weight)
+        self.weight0 = self.weight0_opt.update(self.weight0, grad_weight0)
+        gradient_sum = self.Wcol.T.dot(gradient_sum)
+        gradient_sum = column_convert_2_image(gradient_sum,
+                                 self.in_layer.shape,
+                                 self.size_of_kernel,
+                                 o_shape=self.type_of_padding,
+                                 stride=self.stride,
+                                )
+    
+        return gradient_sum
+
+# FlattenLayer.py
+
+from cnn_architecture.BaseLayer import BaseLayer
+import numpy as np
+
+class FlattenLayer(BaseLayer):
+    """A class to flatten the pooled feature map into a column.
+    
+    Methods
+    -------
+    get_output():
+        returns the product of array elements based on the input size
+        
+    forward_feed(self, X, training=True):
+        returns the output after flattening and reshaping the feature map obtained from the previous layer
+
+    backward_feed(self, total_gradient):
+        returns the gradient of the loss function 
+
+    """
+
+    def __init__(self, size_of_input=None):
+        self.prevshape = None
+        self.size_of_input = size_of_input
+
+    def return_out(self):
+        return (np.prod(self.size_of_input),)
+    
+    def backward_feed(self, gradient_sum):
+        return gradient_sum.reshape(self.prevshape)
+
+    def forward_feed(self, X, training=True):
+        self.prevshape = X.shape
+        return X.reshape((X.shape[0], -1))
+
+    
+# FullyConnected.py
+
+from cnn_architecture.BaseLayer import BaseLayer
+
+import copy as cp
+import math
+import numpy as np
+
+class FullyConnectedLayer(BaseLayer):
+    """A class that defines all the methods and specifications for the Dense/Fully Connected Layer. 
+    
+    Attributes
+    ----------
+    number_of_units: Any
+        the number of neurons/units in the layer.
+    inp_size: Any | None
+        the size of the input image pixels. for eg. (100,100)
+        
+    Methods
+    -------
+    initialize_value(enhancer):
+        takes in the specified enhancer and initializes values for weights and more.
+    
+    get_total_parameters():
+        returns the total number of parameters for the particular dense layer.
+    
+    forward_feed(X, train=True):
+        defines the forward flow of input values. it applies the weights to the input layer and returns the output of that.
+    
+    backward_flow(total_grad):
+        defines the backward flow from the output layer. returns the total gradient.
+        
+    return_out():
+        returns the number of output units.
+    """
+    def __init__(self, total_units, size_of_input=None):
+        self.layer_inp = None
+        self.weight = None
+        self.weight0 = None
+        self.total_units = total_units
+        self.size_of_input = size_of_input
+
+    def get_total_parameters(self):
+        return np.prod(self.weight.shape) + np.prod(self.weight0.shape)
+
+    def initialize_value(self, enhancer):
+        to_calculate_weight = 1 / math.sqrt(self.size_of_input[0])
+        self.weight = np.random.uniform(-to_calculate_weight, to_calculate_weight, (self.size_of_input[0], self.total_units))
+        self.weight0 = np.zeros((1, self.total_units))
+        self.weight_opt = cp.copy(enhancer)
+        self.weight0_opt = cp.copy(enhancer)
+
+    def forward_feed(self, X, training=True):
+        self.layer_inp = X
+        return self.weight0 + X.dot(self.weight)
+
+    def backward_feed(self, gradient_sum):
+        W = self.weight
+        weight_of_gradient = self.layer_inp.T.dot(gradient_sum)
+        weight_of_gradient0 = np.sum(gradient_sum, axis=0, keepdims=True)
+        self.weight = self.weight_opt.update(self.weight, weight_of_gradient)
+        self.weight0 = self.weight0_opt.update(self.weight0, weight_of_gradient0)
+        gradient_sum = gradient_sum.dot(W.T)
+        return gradient_sum
+
+    def return_out(self):
+        return (self.total_units,)
+
+# MaxPooling.py
+
+import numpy as np
+
+from cnn_architecture.BaseLayer import BaseLayer
+from cnn_architecture.utils import VALID_PADDING, image_convert_2_column, column_convert_2_image
+
+# Defining pool layer class
+class PoolingLayer(BaseLayer):
+    """ A class that is called after Convolution layer.It takes feature map as input and extract features from it.
+    
+    Attributes:
+    ----------
+    pool_shape_size: 2*2
+        Defines filter size
+    padding:Valid_Padding/same_padding
+    we chose valid_padding
+    Here we use non zero padding outside the edges when we do max pool.
+    Stride=can be 1,2 or more.We chose 2
+    The number of pixels shifts over the input matrix
+    
+    Methods:
+    --------
+    initialize_value(attributes):
+    Takes in the particular parameter and initializes respective values for it.
+    return_out():
+    Return Number of channels,Height and Width of an image.
+    forward_feed:
+    The forward flow take the input from covolution layer and return the reduced features of the feature map generated by a convolution layer.
+    backward_feed:
+    Defines the backward flow from the output layer.it returns total gradient
+    
+    """ 
+    def __init__(self, pool_shape_size=(2, 2), stride=2, type_of_padding=VALID_PADDING):
+        self.type_of_padding = type_of_padding
+        self.pool_size = pool_shape_size
+        self.stride = pool_shape_size[0] if stride is None else stride
+    
+    def backward_feed(self, gradient_sum):
+        b_sz, _, _, _ = gradient_sum.shape
+        channels, hi, wi = self.size_of_input
+        gradient_sum = gradient_sum.transpose(2, 3, 0, 1).ravel()
+        total_grad_col = self._backward_pooling(gradient_sum)
+        gradient_sum = column_convert_2_image(total_grad_col, (b_sz * channels, 1, hi, wi), self.pool_size,
+                                 self.stride, self.type_of_padding)
+        gradient_sum = gradient_sum.reshape((b_sz,) + self.size_of_input)
+        return gradient_sum    
+
+    def forward_feed(self, X, train=True):
+        self.inp = X
+        batch_sz, channel, hi, wi = X.shape
+        X = X.reshape(batch_sz * channel, 1, hi, wi)
+        _, hi_out, wi_out = self.return_out()
+        X_col = image_convert_2_column(X, self.pool_size, self.stride, self.type_of_padding)
+        out = self._forward_pooling(X_col)
+        out = out.reshape(hi_out, wi_out, batch_sz, channel)
+        out = out.transpose(2, 3, 0, 1)
+        return out
+
+
+    def return_out(self):
+        channel, hi, wi = self.size_of_input
+        wi_out = (wi - self.pool_size[1]) // self.stride + 1
+        hi_out = (hi - self.pool_size[0]) // self.stride + 1
+        return channel, int(hi_out), int(wi_out)
+
+# Defining maxpool layer class
+class MaximumPoolingLayer(PoolingLayer):
+    def _backward_pooling(self, gradient_sum):
+        total_gradcol = np.zeros((np.prod(self.pool_size), gradient_sum.size))
+        arg_max = self.cache
+        total_gradcol[arg_max, range(gradient_sum.size)] = gradient_sum
+        return total_gradcol
+       
+    def _forward_pooling(self, X_col):
+        arg_max = np.argmax(X_col, axis=0).flatten()
+        o = X_col[arg_max, range(arg_max.size)]
+        self.cache = arg_max
+        return o
+
+    
+# TransferFunction.py
+
+from cnn_architecture.BaseLayer import BaseLayer
+import numpy as np
+
+class TransferFunction(BaseLayer):
+    """Defines the Activation Functions that we're using to build our model.
+    
+    Attributes
+    ----------
+    func: Any
+        object of a specific Activation Function
+        
+    Methods
+    -------
+    return_out():
+        returns the input size taken in as input to apply the activation function on
+
+    name():
+        returns the name of the activation function we're using
+        
+    forward_feed(val, training=True):
+        returns the output after applying the activation function on the output of the previous layer
+    
+    backward_feed(total_gradient):
+        returns the gradient of the loss function 
+    """
+    def __init__(self, function):
+        self.layer = None
+        self.function = function()
+
+    def return_out(self):
+        return self.size_of_input
+
+    def name(self):
+        activation_func_name = "Activation/Transfer Function: " + self.function.__class__.__name__ + " "
+        return activation_func_name
+
+    def forward_feed(self, layer_name, training=True):
+        self.layer = layer_name
+        return self.function(layer_name)
+
+    def backward_feed(self, gradient_sum):
+        return gradient_sum * self.function.grad(self.layer)
+
+class ReLuActivationFunc:
+    """A class to define specific methods for ReLu Activation Function.
+    
+    Methods
+    -------
+    grad(val):
+        returns the gradient of the output of the layer, to the next layer
+    """
+    def grad(self, ip):
+        return np.where(ip < 0, 0, 1)
+
+    def __call__(self, data):
+        return np.where(data < 0, 0, data)
+
+class SoftMaxActivationFunc:
+    """A class to define specific methods for SoftMax activation Function. 
+    
+    Methods
+    -------
+    grad(data):
+        returns the output after application of SoftMax Activation Function on the output of the last layer
+    """
+    def grad(self, data):
+        probs = self.__call__(data)
+        return probs * (1 - probs)
+
+    def __call__(self, data):
+        res = np.exp(data - np.max(data, keepdims=True, axis=-1))
+        return res / np.sum(res,keepdims=True, axis=-1,)
+
+
+
+# utils.py
+
+import math
+from datetime import datetime
+
+import numpy as np
+
+SAME_PADDING = "same"
+VALID_PADDING = "valid"
+
+def diagonal_matrix(x):
+    mat = np.zeros((len(x), len(x)))
+    for j in range(len(mat[0])):
+        mat[j, j] = x[j]
+    return mat
+
+def iter_batch(X, y = None, size_of_batch = 64):
+    number_samp = X.shape[0]
+    for i in np.arange(0, number_samp, size_of_batch):
+        start, end = i, min(i + size_of_batch, number_samp)
+        if y is not None:
+            yield X[start:end], y[start:end]
+        else:
+            yield X[start:end]
+
+def normalize(X, order=2, axis=-1):
+    lval2 = np.atleast_1d(np.linalg.norm(X, order, axis))
+    lval2[lval2 == 0] = 1
+    return X / np.expand_dims(lval2, axis)
+
+def apply_padding(filter, type_of_padding = SAME_PADDING):
+    if type_of_padding == "valid":
+        return (0, 0), (0, 0)
+    elif type_of_padding == SAME_PADDING:
+        h_filter, w_filter = filter
+        h1 = int(math.floor((h_filter - 1) / 2))
+        w1 = int(math.floor((w_filter - 1) / 2))
+        h2 = int(math.ceil((h_filter - 1) / 2))
+        w2 = int(math.ceil((w_filter - 1) / 2))
+        return (h1, h2), (w1, w2)
+
+
+def find_column_values(image, filter, type_of_padding, stride=1):
+    batch_size, channel, ht, wt = image
+    filter_height, filter_width = filter
+    h_p, w_p = type_of_padding
+    hout = int((ht + np.sum(h_p) - filter_height) / stride + 1)
+    wout = int((wt + np.sum(w_p) - filter_width) / stride + 1)
+
+    a0 = np.repeat(np.arange(filter_height), filter_width)
+    a0 = np.tile(a0, channel)
+    a1 = stride * np.repeat(np.arange(hout), wout)
+    b0 = np.tile(np.arange(filter_width), filter_height * channel)
+    b1 = stride * np.tile(np.arange(wout), hout)
+    a = a0.reshape(-1, 1) + a1.reshape(1, -1)
+    b = b0.reshape(-1, 1) + b1.reshape(1, -1)
+
+    l = np.repeat(np.arange(channel), filter_height * filter_width).reshape(-1, 1)
+    return (l, a, b)
+
+def image_convert_2_column(imgs, filter, stride, output=SAME_PADDING):
+    h_p, w_p = apply_padding(filter, output)
+    img_pad = np.pad(imgs, ((0, 0), (0, 0), h_p, w_p), mode='constant')
+    k, i, j = find_column_values(imgs.shape, filter, (h_p, w_p), stride)
+    columns = img_pad[:, k, i, j]
+    channel = imgs.shape[1]
+    f_h, f_w = filter
+    columns = columns.transpose(1, 2, 0).reshape(f_h * f_w * channel, -1)
+    return columns
+
+def column_convert_2_image(columns, img_shape, filter, stride, o_shape=SAME_PADDING):
+    b_size, channel, ht, wt = img_shape
+    h_p, w_p = apply_padding(filter, o_shape)
+    h_padded = ht + np.sum(h_p)
+    w_padded = wt + np.sum(w_p)
+    ipadval = np.zeros((b_size, channel, h_padded, w_padded))
+    l, a, b = find_column_values(img_shape, filter, (h_p, w_p), stride)
+    columns = columns.reshape(channel * np.prod(filter), -1, b_size)
+    columns = columns.transpose(2, 0, 1)
+    np.add.at(ipadval, (slice(None), l, a, b), columns)
+    return ipadval[:, :, h_p[0]:ht + h_p[0], w_p[0]:wt + w_p[0]]
+
+
+class AdamOptimizer:
+    def __init__(self, rate=0.001, decay_rate1=0.9, decay_rate2=0.999):
+        self.delta = None
+        self.rate = rate
+        self.eps = 1e-8
+        self.momentum = None
+        self.velocity = None
+        self.decay_rate1 = decay_rate1
+        self.decay_rate2 = decay_rate2
+
+    def update(self, original_weight, weight_grad):
+        if self.momentum is None:
+            self.momentum = np.zeros(np.shape(weight_grad))
+            self.velocity = np.zeros(np.shape(weight_grad))
+
+        self.momentum = self.decay_rate1 * self.momentum + (1 - self.decay_rate1) * weight_grad
+        self.velocity = self.decay_rate2 * self.velocity + (1 - self.decay_rate2) * np.power(weight_grad, 2)
+
+        updated_velocity = self.velocity / (1 - self.decay_rate2)
+        updated_momentum = self.momentum / (1 - self.decay_rate1)
+
+        self.delta = self.rate * updated_momentum / (np.sqrt(updated_velocity) + self.eps)
+        return original_weight - self.delta
+
+
+def acc_score(y_true, y_pred):
+    return np.sum(y_pred == y_true, axis=0) / len(y_true)
+
+
+class Loss(object):
+    def loss(self, y_actual, y_predict):
+        pass
+
+    def gradient(self, y_actual, y_predict):
+        pass
+
+    def calculate_accuracy(self, y_actual, y_predict):
+        return 0
+
+
+class SquaredLoss(Loss):
+    def __init__(self): pass
+
+    def loss(self, y_actual, y_predict):
+        return 0.5 * np.power((y_actual - y_predict), 2)
+
+    def gradient(self, y_actual, y_pred):
+        return -(y_actual - y_pred)
+
+
+class CalCrossEntropy(Loss):
+    def __init__(self): pass
+
+    def loss(self, y, pr):
+        # Clipping probability to avoid divide by zero error
+        pr = np.clip(pr, 1e-15, 1 - 1e-15)
+        return - y * np.log(pr) - (1 - y) * np.log(1 - pr)
+
+    def calculate_accuracy(self, y, pr):
+        return acc_score(np.argmax(y, axis=1), np.argmax(pr, axis=1))
+
+    def gradient(self, y, pr):
+        # Clipping probability to avoid divide by zero error
+        pr = np.clip(pr, 1e-15, 1 - 1e-15)
+        return - (y / pr) + (1 - y) / (1 - pr)
+
+
+def get_time_diff(start_time):
+    return str((datetime.now() - start_time)).split(".")[0]
+

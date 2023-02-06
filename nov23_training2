@@ -1,0 +1,116 @@
+(deep-learning-scene-recognition) sohaparasnis@Sohas-MacBook-Air CS6375_SceneRecognition % python scene_recognition_model.py
+
+******************************** DOWNLOADING DATASET ********************************
+
+Requirement already satisfied: kaggle in /Library/Frameworks/Python.framework/Versions/3.10/lib/python3.10/site-packages (1.5.12)
+Requirement already satisfied: terminaltables in /Library/Frameworks/Python.framework/Versions/3.10/lib/python3.10/site-packages (3.1.10)
+Requirement already satisfied: requests in /Library/Frameworks/Python.framework/Versions/3.10/lib/python3.10/site-packages (from kaggle) (2.28.1)
+Requirement already satisfied: urllib3 in /Library/Frameworks/Python.framework/Versions/3.10/lib/python3.10/site-packages (from kaggle) (1.26.12)
+Requirement already satisfied: six>=1.10 in /Library/Frameworks/Python.framework/Versions/3.10/lib/python3.10/site-packages (from kaggle) (1.16.0)
+Requirement already satisfied: certifi in /Library/Frameworks/Python.framework/Versions/3.10/lib/python3.10/site-packages (from kaggle) (2022.9.24)
+Requirement already satisfied: tqdm in /Library/Frameworks/Python.framework/Versions/3.10/lib/python3.10/site-packages (from kaggle) (4.64.1)
+Requirement already satisfied: python-slugify in /Library/Frameworks/Python.framework/Versions/3.10/lib/python3.10/site-packages (from kaggle) (7.0.0)
+Requirement already satisfied: python-dateutil in /Library/Frameworks/Python.framework/Versions/3.10/lib/python3.10/site-packages (from kaggle) (2.8.2)
+Requirement already satisfied: text-unidecode>=1.3 in /Library/Frameworks/Python.framework/Versions/3.10/lib/python3.10/site-packages (from python-slugify->kaggle) (1.3)
+Requirement already satisfied: idna<4,>=2.5 in /Library/Frameworks/Python.framework/Versions/3.10/lib/python3.10/site-packages (from requests->kaggle) (3.4)
+Requirement already satisfied: charset-normalizer<3,>=2 in /Library/Frameworks/Python.framework/Versions/3.10/lib/python3.10/site-packages (from requests->kaggle) (2.1.1)
+
+[notice] A new release of pip available: 22.3 -> 22.3.1
+[notice] To update, run: pip install --upgrade pip
+mkdir: /Users/sohaparasnis/.kaggle: File exists
+Warning: Your Kaggle API key is readable by other users on this system! To fix this, you can run 'chmod 600 /Users/sohaparasnis/.kaggle/kaggle.json'
+intel-image-classification.zip: Skipping, found more recently modified local copy (use --force to force download)
+
+    A class to build a CNN model. 
+    
+    Attributes:
+    n_inputs: Any
+        number of inputs to the model (image shape)
+    n_outputs: Any
+        number of outputs (output neurons)
+    val_datas: Any
+        validation data
+
+    Methods:
+    get_model():
+        returns the NeuralNetwork class object.
+    
+Found 14034 files belonging to 6 classes.
+2022-11-23 02:11:30.978923: I tensorflow/core/platform/cpu_feature_guard.cc:151] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  SSE4.1 SSE4.2
+To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
+Found 3000 files belonging to 6 classes.
+['buildings', 'forest', 'glacier', 'mountain', 'sea', 'street']
+
+******************************** DATA PREPROCESSING ********************************
+
+Min and max values after rescaling: 0.0 1.0
+
+Shape of X_train, y_train: (1600, 3, 154, 154) (1600, 6)
+
+******************************** MODEL SUMMARY ********************************
+
++---------------+
+| Model Summary |
++---------------+
+Input Shape: (3, 154, 154)
+(8, 1) (8, 3, 2, 2)
+(16, 1) (16, 8, 2, 2)
+(32, 1) (32, 16, 2, 2)
+(64, 1) (64, 32, 2, 2)
+(128, 1) (128, 64, 2, 2)
++--------------------------------+--------+---------------+
+| Name of Layer                  | Params | Output Shape  |
++--------------------------------+--------+---------------+
+| Conv2D                         | 104    | (8, 154, 154) |
+| Activation (ReluActivation)    | 0      | (8, 154, 154) |
+| MaxPooling2D                   | 0      | (8, 77, 77)   |
+| Conv2D                         | 528    | (16, 77, 77)  |
+| Activation (ReluActivation)    | 0      | (16, 77, 77)  |
+| MaxPooling2D                   | 0      | (16, 38, 38)  |
+| Conv2D                         | 2080   | (32, 38, 38)  |
+| Activation (ReluActivation)    | 0      | (32, 38, 38)  |
+| MaxPooling2D                   | 0      | (32, 19, 19)  |
+| Conv2D                         | 8256   | (64, 19, 19)  |
+| Activation (ReluActivation)    | 0      | (64, 19, 19)  |
+| MaxPooling2D                   | 0      | (64, 9, 9)    |
+| Conv2D                         | 32896  | (128, 9, 9)   |
+| Activation (ReluActivation)    | 0      | (128, 9, 9)   |
+| MaxPooling2D                   | 0      | (128, 4, 4)   |
+| Flatten                        | 0      | (2048,)       |
+| Dense                          | 524544 | (256,)        |
+| Activation (ReluActivation)    | 0      | (256,)        |
+| Dense                          | 65792  | (256,)        |
+| Activation (ReluActivation)    | 0      | (256,)        |
+| Dense                          | 1542   | (6,)          |
+| Activation (SoftmaxActivation) | 0      | (6,)          |
++--------------------------------+--------+---------------+
+Total Parameters are: 635742
+
+------------------------------ MODEL TRAINING ------------------------------
+Training for epoch:0 batch:50 in time:0:02:37 | loss=0.30, accuracy=0.59
+Training loop complete for epoch:0 in time:0:05:38 | train_loss:0.51 train_accuracy:0.34 | val_loss:0.33 val_accuracy:0.47
+Training for epoch:1 batch:50 in time:0:02:23 | loss=0.21, accuracy=0.81
+Training loop complete for epoch:1 in time:0:04:44 | train_loss:0.30 train_accuracy:0.57 | val_loss:0.30 val_accuracy:0.57
+Training for epoch:2 batch:50 in time:0:02:18 | loss=0.15, accuracy=0.84
+Training loop complete for epoch:2 in time:0:05:31 | train_loss:0.25 train_accuracy:0.67 | val_loss:0.28 val_accuracy:0.61
+Training for epoch:3 batch:50 in time:0:02:22 | loss=0.12, accuracy=0.84
+Training loop complete for epoch:3 in time:0:04:52 | train_loss:0.21 train_accuracy:0.73 | val_loss:0.27 val_accuracy:0.63
+Training for epoch:4 batch:50 in time:0:02:24 | loss=0.09, accuracy=0.88
+Training loop complete for epoch:4 in time:0:05:13 | train_loss:0.18 train_accuracy:0.79 | val_loss:0.28 val_accuracy:0.63
+Training for epoch:5 batch:50 in time:0:02:22 | loss=0.08, accuracy=0.94
+Training loop complete for epoch:5 in time:0:04:58 | train_loss:0.15 train_accuracy:0.82 | val_loss:0.28 val_accuracy:0.63
+Training for epoch:6 batch:50 in time:0:02:24 | loss=0.05, accuracy=0.94
+Training loop complete for epoch:6 in time:0:05:07 | train_loss:0.14 train_accuracy:0.84 | val_loss:0.32 val_accuracy:0.60
+Training for epoch:7 batch:50 in time:0:02:21 | loss=0.06, accuracy=0.97
+Training loop complete for epoch:7 in time:0:04:45 | train_loss:0.12 train_accuracy:0.87 | val_loss:0.34 val_accuracy:0.61
+Training for epoch:8 batch:50 in time:0:02:26 | loss=0.04, accuracy=1.00
+Training loop complete for epoch:8 in time:0:05:18 | train_loss:0.10 train_accuracy:0.88 | val_loss:0.36 val_accuracy:0.60
+Training for epoch:9 batch:50 in time:0:02:21 | loss=0.04, accuracy=0.91
+Training loop complete for epoch:9 in time:0:04:50 | train_loss:0.09 train_accuracy:0.90 | val_loss:0.33 val_accuracy:0.62
+Final accuracy:0.62 | Time taken:0:51:01
+------------------------------ MODEL PERFORMANCE ------------------------------
+Training accuracy: 90.1875
+Validation accuracy: 62.3750
+Training loss: 0.0905
+Validation loss: 0.3311
+(deep-learning-scene-recognition) sohaparasnis@Sohas-MacBook-Air CS6375_SceneRecognition % 

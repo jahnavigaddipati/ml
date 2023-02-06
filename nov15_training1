@@ -1,0 +1,137 @@
+Last login: Tue Nov 15 16:14:16 on ttys000
+(base) sohaparasnis@Sohas-MacBook-Air ~ % cd Desktop
+(base) sohaparasnis@Sohas-MacBook-Air Desktop % cd cs6375_ml 
+(base) sohaparasnis@Sohas-MacBook-Air cs6375_ml % ls
+0-ML_Intro.pdf
+2-What is ML_1(1)(1).pdf
+3-Probability(1)(1).pdf
+ADABOOST PRACTICE QUESTIONS.pdf
+Assignments
+CS6375_ML_Assignment1_Submission.pdf
+CS6375_Project_Status_Report.pdf
+DECISIONTREE(2).pdf
+DecisionTree.pdf
+Ensemble Methods(1).pdf
+IBL-Practice Questions.pdf
+ID3-Example.pptx
+InductiveLearning.pdf
+Instance_Based_Learning(1).pdf
+ML Exams
+ML Report.pdf
+ML Resources (other)
+ML resources (M)
+Midterm_Topics-2-2.pdf
+NB_LR.pdf
+NB_Questions.pdf
+NBayesLogReg_TomMitchellBook.pdf
+Naive Bayes.pdf
+Neural Networks.pdf
+Notes
+Perceptron-Qn.pdf
+Perceptron.pdf
+Practice Questions EXPECTED VALUE AND VARIANCE.pdf
+Prob_MLE.pdf
+Project Description(1).pdf
+Questions from Domingos Paper.pdf
+Reading Lab
+SVM.pdf
+UnsupervisedLearning(1).pdf
+cacm12.pdf
+deep-learning-scene-recognition
+final-project-conda
+model_eval.pdf
+project_setup
+review-Grad(1).pdf
+screencapture-elearning-utdallas-edu-ultra-courses-263557-1-cl-outline-2022-11-01-22_23_13.pdf
+(base) sohaparasnis@Sohas-MacBook-Air cs6375_ml % cd deep-learning-scene-recognition
+(base) sohaparasnis@Sohas-MacBook-Air deep-learning-scene-recognition % conda activate deep-learning-scene-recognition
+(deep-learning-scene-recognition) sohaparasnis@Sohas-MacBook-Air deep-learning-scene-recognition % python3 model_copy.py
+  File "/Users/sohaparasnis/Desktop/cs6375_ml/deep-learning-scene-recognition/model_copy.py", line 34
+    model = NeuralNetwork(opt_type=AdamOptimizer(), loss=CalCrossEntropy, val_datas=val_datas)
+TabError: inconsistent use of tabs and spaces in indentation
+(deep-learning-scene-recognition) sohaparasnis@Sohas-MacBook-Air deep-learning-scene-recognition % python3 model_copy2.py
+------------------------------ DOWNLOADING DATASET ------------------------------
+Requirement already satisfied: kaggle in /Users/sohaparasnis/opt/anaconda3/envs/deep-learning-scene-recognition/lib/python3.10/site-packages (1.5.12)
+Requirement already satisfied: terminaltables in /Users/sohaparasnis/opt/anaconda3/envs/deep-learning-scene-recognition/lib/python3.10/site-packages (3.1.10)
+Requirement already satisfied: tqdm in /Users/sohaparasnis/opt/anaconda3/envs/deep-learning-scene-recognition/lib/python3.10/site-packages (from kaggle) (4.64.0)
+Requirement already satisfied: urllib3 in /Users/sohaparasnis/opt/anaconda3/envs/deep-learning-scene-recognition/lib/python3.10/site-packages (from kaggle) (1.26.9)
+Requirement already satisfied: six>=1.10 in /Users/sohaparasnis/opt/anaconda3/envs/deep-learning-scene-recognition/lib/python3.10/site-packages (from kaggle) (1.16.0)
+Requirement already satisfied: requests in /Users/sohaparasnis/opt/anaconda3/envs/deep-learning-scene-recognition/lib/python3.10/site-packages (from kaggle) (2.27.1)
+Requirement already satisfied: certifi in /Users/sohaparasnis/opt/anaconda3/envs/deep-learning-scene-recognition/lib/python3.10/site-packages (from kaggle) (2022.9.24)
+Requirement already satisfied: python-slugify in /Users/sohaparasnis/opt/anaconda3/envs/deep-learning-scene-recognition/lib/python3.10/site-packages (from kaggle) (6.1.1)
+Requirement already satisfied: python-dateutil in /Users/sohaparasnis/opt/anaconda3/envs/deep-learning-scene-recognition/lib/python3.10/site-packages (from kaggle) (2.8.2)
+Requirement already satisfied: text-unidecode>=1.3 in /Users/sohaparasnis/opt/anaconda3/envs/deep-learning-scene-recognition/lib/python3.10/site-packages (from python-slugify->kaggle) (1.3)
+Requirement already satisfied: charset-normalizer~=2.0.0 in /Users/sohaparasnis/opt/anaconda3/envs/deep-learning-scene-recognition/lib/python3.10/site-packages (from requests->kaggle) (2.0.12)
+Requirement already satisfied: idna<4,>=2.5 in /Users/sohaparasnis/opt/anaconda3/envs/deep-learning-scene-recognition/lib/python3.10/site-packages (from requests->kaggle) (3.3)
+mkdir: /Users/sohaparasnis/.kaggle: File exists
+Warning: Your Kaggle API key is readable by other users on this system! To fix this, you can run 'chmod 600 /Users/sohaparasnis/.kaggle/kaggle.json'
+intel-image-classification.zip: Skipping, found more recently modified local copy (use --force to force download)
+Found 14034 files belonging to 6 classes.
+2022-11-15 16:49:49.042003: I tensorflow/core/platform/cpu_feature_guard.cc:151] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  SSE4.1 SSE4.2
+To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
+Found 3000 files belonging to 6 classes.
+['buildings', 'forest', 'glacier', 'mountain', 'sea', 'street']
+------------------------------ DATA PREPROCESSING ------------------------------
+Min and max values after rescaling: 0.0 1.0
+Shape of X_train, y_train: (320, 3, 154, 154) (320, 6)
+------------------------------ MODEL SUMMARY ------------------------------
++---------------+
+| Model Summary |
++---------------+
+Input Shape: (3, 154, 154)
++--------------------------------+--------+---------------+
+| Name of Layer                  | Params | Output Shape  |
++--------------------------------+--------+---------------+
+| Conv2D                         | 104    | (8, 154, 154) |
+| Activation (ReluActivation)    | 0      | (8, 154, 154) |
+| MaxPooling2D                   | 0      | (8, 77, 77)   |
+| Conv2D                         | 528    | (16, 77, 77)  |
+| Activation (ReluActivation)    | 0      | (16, 77, 77)  |
+| MaxPooling2D                   | 0      | (16, 38, 38)  |
+| Conv2D                         | 2080   | (32, 38, 38)  |
+| Activation (ReluActivation)    | 0      | (32, 38, 38)  |
+| MaxPooling2D                   | 0      | (32, 19, 19)  |
+| Conv2D                         | 8256   | (64, 19, 19)  |
+| Activation (ReluActivation)    | 0      | (64, 19, 19)  |
+| MaxPooling2D                   | 0      | (64, 9, 9)    |
+| Conv2D                         | 32896  | (128, 9, 9)   |
+| Activation (ReluActivation)    | 0      | (128, 9, 9)   |
+| MaxPooling2D                   | 0      | (128, 4, 4)   |
+| Flatten                        | 0      | (2048,)       |
+| Dense                          | 524544 | (256,)        |
+| Activation (ReluActivation)    | 0      | (256,)        |
+| Dense                          | 65792  | (256,)        |
+| Activation (ReluActivation)    | 0      | (256,)        |
+| Dense                          | 1542   | (6,)          |
+| Activation (SoftmaxActivation) | 0      | (6,)          |
++--------------------------------+--------+---------------+
+Total Parameters are: 635742
+
+------------------------------ MODEL TRAINING ------------------------------
+Training for epoch:0 batch:10 in time:0:00:41 | loss=0.46, accuracy=0.31
+Training loop complete for epoch:0 in time:0:00:49 | train_loss:0.56 train_accuracy:0.17 | val_loss:0.46 val_accuracy:0.14
+Training for epoch:1 batch:10 in time:0:00:26 | loss=0.47, accuracy=0.06
+Training loop complete for epoch:1 in time:0:00:34 | train_loss:0.45 train_accuracy:0.21 | val_loss:0.44 val_accuracy:0.23
+Training for epoch:2 batch:10 in time:0:00:26 | loss=0.39, accuracy=0.25
+Training loop complete for epoch:2 in time:0:00:33 | train_loss:0.40 train_accuracy:0.40 | val_loss:0.37 val_accuracy:0.40
+Training for epoch:3 batch:10 in time:0:00:26 | loss=0.28, accuracy=0.62
+Training loop complete for epoch:3 in time:0:00:34 | train_loss:0.32 train_accuracy:0.56 | val_loss:0.32 val_accuracy:0.52
+Training for epoch:4 batch:10 in time:0:00:26 | loss=0.28, accuracy=0.59
+Training loop complete for epoch:4 in time:0:00:34 | train_loss:0.29 train_accuracy:0.61 | val_loss:0.31 val_accuracy:0.53
+Training for epoch:5 batch:10 in time:0:00:26 | loss=0.20, accuracy=0.84
+Training loop complete for epoch:5 in time:0:00:34 | train_loss:0.24 train_accuracy:0.72 | val_loss:0.32 val_accuracy:0.52
+Training for epoch:6 batch:10 in time:0:00:26 | loss=0.15, accuracy=0.88
+Training loop complete for epoch:6 in time:0:00:33 | train_loss:0.20 train_accuracy:0.75 | val_loss:0.31 val_accuracy:0.57
+Training for epoch:7 batch:10 in time:0:00:26 | loss=0.17, accuracy=0.78
+Training loop complete for epoch:7 in time:0:00:33 | train_loss:0.20 train_accuracy:0.72 | val_loss:0.31 val_accuracy:0.59
+Training for epoch:8 batch:10 in time:0:00:26 | loss=0.19, accuracy=0.69
+Training loop complete for epoch:8 in time:0:00:33 | train_loss:0.19 train_accuracy:0.76 | val_loss:0.34 val_accuracy:0.57
+Training for epoch:9 batch:10 in time:0:00:26 | loss=0.15, accuracy=0.84
+Training loop complete for epoch:9 in time:0:00:33 | train_loss:0.19 train_accuracy:0.76 | val_loss:0.31 val_accuracy:0.60
+Final accuracy:0.60 | Time taken:0:05:55
+------------------------------ MODEL PERFORMANCE ------------------------------
+Training accuracy: 75.6250
+Validation accuracy: 59.6875
+Training loss: 0.1913
+Validation loss: 0.3085
+(deep-learning-scene-recognition) sohaparasnis@Sohas-MacBook-Air deep-learning-scene-recognition % 

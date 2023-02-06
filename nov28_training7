@@ -1,0 +1,168 @@
+(deep-learning-scene-recognition) sohaparasnis@Sohas-Air CS6375_SceneRecognition % python scene_recognition_model.py             
+
+******************************** GETTING DATASET ********************************
+
+Requirement already satisfied: kaggle in /Library/Frameworks/Python.framework/Versions/3.10/lib/python3.10/site-packages (1.5.12)
+Requirement already satisfied: terminaltables in /Library/Frameworks/Python.framework/Versions/3.10/lib/python3.10/site-packages (3.1.10)
+Requirement already satisfied: python-slugify in /Library/Frameworks/Python.framework/Versions/3.10/lib/python3.10/site-packages (from kaggle) (7.0.0)
+Requirement already satisfied: python-dateutil in /Library/Frameworks/Python.framework/Versions/3.10/lib/python3.10/site-packages (from kaggle) (2.8.2)
+Requirement already satisfied: requests in /Library/Frameworks/Python.framework/Versions/3.10/lib/python3.10/site-packages (from kaggle) (2.28.1)
+Requirement already satisfied: tqdm in /Library/Frameworks/Python.framework/Versions/3.10/lib/python3.10/site-packages (from kaggle) (4.64.1)
+Requirement already satisfied: urllib3 in /Library/Frameworks/Python.framework/Versions/3.10/lib/python3.10/site-packages (from kaggle) (1.26.12)
+Requirement already satisfied: certifi in /Library/Frameworks/Python.framework/Versions/3.10/lib/python3.10/site-packages (from kaggle) (2022.9.24)
+Requirement already satisfied: six>=1.10 in /Library/Frameworks/Python.framework/Versions/3.10/lib/python3.10/site-packages (from kaggle) (1.16.0)
+Requirement already satisfied: text-unidecode>=1.3 in /Library/Frameworks/Python.framework/Versions/3.10/lib/python3.10/site-packages (from python-slugify->kaggle) (1.3)
+Requirement already satisfied: charset-normalizer<3,>=2 in /Library/Frameworks/Python.framework/Versions/3.10/lib/python3.10/site-packages (from requests->kaggle) (2.1.1)
+Requirement already satisfied: idna<4,>=2.5 in /Library/Frameworks/Python.framework/Versions/3.10/lib/python3.10/site-packages (from requests->kaggle) (3.4)
+
+[notice] A new release of pip available: 22.3 -> 22.3.1
+[notice] To update, run: pip install --upgrade pip
+mkdir: /Users/sohaparasnis/.kaggle: File exists
+Warning: Your Kaggle API key is readable by other users on this system! To fix this, you can run 'chmod 600 /Users/sohaparasnis/.kaggle/kaggle.json'
+intel-image-classification.zip: Skipping, found more recently modified local copy (use --force to force download)
+
+    A class to build a CNN model. 
+    
+    Attributes:
+    n_inputs: Any
+        number of inputs to the model (image shape)
+    n_outputs: Any
+        number of outputs (output neurons)
+    val_datas: Any
+        validation data
+
+    Methods:
+    get_model():
+        returns the NeuralNetwork class object.
+    
+Found 14034 files belonging to 6 classes.
+2022-11-28 00:05:39.747912: I tensorflow/core/platform/cpu_feature_guard.cc:151] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  SSE4.1 SSE4.2
+To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
+Found 3000 files belonging to 6 classes.
+['buildings', 'forest', 'glacier', 'mountain', 'sea', 'street']
+
+******************************** RESCALING AND PREPROCESSING ********************************
+
+After Rescaling (Min, Max):  0.0 1.0
+
+Shape (X train, y train):  (320, 3, 154, 154) (320, 6)
+
+******************************** SUMMARY OF CNN MODEL ********************************
+
++------------------+
+| Summary of Model |
++------------------+
+Shape of Input: (3, 154, 154)
+
+
+(8, 1) (8, 3, 2, 2)
+(16, 1) (16, 8, 2, 2)
+(32, 1) (32, 16, 2, 2)
+(64, 1) (64, 32, 2, 2)
+(128, 1) (128, 64, 2, 2)
++------------------------------------------------------+------------------+---------------+
+| Layer Name                                           | Total Parameters | Output Shape  |
++------------------------------------------------------+------------------+---------------+
+| Convolutional2DLayer                                 | 104              | (8, 154, 154) |
+|                                                      |                  |               |
+| Activation/Transfer Function: ReLuActivationFunc     | 0                | (8, 154, 154) |
+|                                                      |                  |               |
+| MaximumPoolingLayer                                  | 0                | (8, 77, 77)   |
+|                                                      |                  |               |
+| Convolutional2DLayer                                 | 528              | (16, 77, 77)  |
+|                                                      |                  |               |
+| Activation/Transfer Function: ReLuActivationFunc     | 0                | (16, 77, 77)  |
+|                                                      |                  |               |
+| MaximumPoolingLayer                                  | 0                | (16, 38, 38)  |
+|                                                      |                  |               |
+| Convolutional2DLayer                                 | 2080             | (32, 38, 38)  |
+|                                                      |                  |               |
+| Activation/Transfer Function: ReLuActivationFunc     | 0                | (32, 38, 38)  |
+|                                                      |                  |               |
+| MaximumPoolingLayer                                  | 0                | (32, 19, 19)  |
+|                                                      |                  |               |
+| Convolutional2DLayer                                 | 8256             | (64, 19, 19)  |
+|                                                      |                  |               |
+| Activation/Transfer Function: ReLuActivationFunc     | 0                | (64, 19, 19)  |
+|                                                      |                  |               |
+| MaximumPoolingLayer                                  | 0                | (64, 9, 9)    |
+|                                                      |                  |               |
+| Convolutional2DLayer                                 | 32896            | (128, 9, 9)   |
+|                                                      |                  |               |
+| Activation/Transfer Function: ReLuActivationFunc     | 0                | (128, 9, 9)   |
+|                                                      |                  |               |
+| MaximumPoolingLayer                                  | 0                | (128, 4, 4)   |
+|                                                      |                  |               |
+| FlattenLayer                                         | 0                | (2048,)       |
+|                                                      |                  |               |
+| FullyConnectedLayer                                  | 524544           | (256,)        |
+|                                                      |                  |               |
+| Activation/Transfer Function: ReLuActivationFunc     | 0                | (256,)        |
+|                                                      |                  |               |
+| FullyConnectedLayer                                  | 65792            | (256,)        |
+|                                                      |                  |               |
+| Activation/Transfer Function: ReLuActivationFunc     | 0                | (256,)        |
+|                                                      |                  |               |
+| FullyConnectedLayer                                  | 1542             | (6,)          |
+|                                                      |                  |               |
+| Activation/Transfer Function: SoftMaxActivationFunc  | 0                | (6,)          |
+|                                                      |                  |               |
++------------------------------------------------------+------------------+---------------+
+The sum of all parameters of all layers are: 635742
+
+
+******************************** MODEL TRAINING ********************************
+
+Epoch No.: 0 === Training model... [ batch:10, time taken:0:00:42 ] -> accuracy=0.28, loss=0.43
+>>> Training model (loop) complete [ epoch no.:0, time taken: 0:00:54 ] -> train accuracy:0.18, train loss:0.62 | val accuracy:0.16, val loss:0.48
+
+
+Epoch No.: 1 === Training model... [ batch:10, time taken:0:00:27 ] -> accuracy=0.31, loss=0.38
+>>> Training model (loop) complete [ epoch no.:1, time taken: 0:00:36 ] -> train accuracy:0.33, train loss:0.41 | val accuracy:0.43, val loss:0.37
+
+
+Epoch No.: 2 === Training model... [ batch:10, time taken:0:00:26 ] -> accuracy=0.38, loss=0.34
+>>> Training model (loop) complete [ epoch no.:2, time taken: 0:00:35 ] -> train accuracy:0.47, train loss:0.36 | val accuracy:0.47, val loss:0.35
+
+
+Epoch No.: 3 === Training model... [ batch:10, time taken:0:00:26 ] -> accuracy=0.59, loss=0.26
+>>> Training model (loop) complete [ epoch no.:3, time taken: 0:00:37 ] -> train accuracy:0.58, train loss:0.31 | val accuracy:0.54, val loss:0.33
+
+
+Epoch No.: 4 === Training model... [ batch:10, time taken:0:00:27 ] -> accuracy=0.72, loss=0.24
+>>> Training model (loop) complete [ epoch no.:4, time taken: 0:00:37 ] -> train accuracy:0.65, train loss:0.26 | val accuracy:0.57, val loss:0.31
+
+
+Epoch No.: 5 === Training model... [ batch:10, time taken:0:00:27 ] -> accuracy=0.72, loss=0.22
+>>> Training model (loop) complete [ epoch no.:5, time taken: 0:00:37 ] -> train accuracy:0.71, train loss:0.22 | val accuracy:0.58, val loss:0.30
+
+
+Epoch No.: 6 === Training model... [ batch:10, time taken:0:00:28 ] -> accuracy=0.81, loss=0.18
+>>> Training model (loop) complete [ epoch no.:6, time taken: 0:00:39 ] -> train accuracy:0.80, train loss:0.18 | val accuracy:0.61, val loss:0.30
+
+
+Epoch No.: 7 === Training model... [ batch:10, time taken:0:00:31 ] -> accuracy=0.84, loss=0.13
+>>> Training model (loop) complete [ epoch no.:7, time taken: 0:00:39 ] -> train accuracy:0.87, train loss:0.13 | val accuracy:0.63, val loss:0.30
+
+
+Epoch No.: 8 === Training model... [ batch:10, time taken:0:00:27 ] -> accuracy=0.81, loss=0.13
+>>> Training model (loop) complete [ epoch no.:8, time taken: 0:00:37 ] -> train accuracy:0.90, train loss:0.11 | val accuracy:0.65, val loss:0.32
+
+
+Epoch No.: 9 === Training model... [ batch:10, time taken:0:00:27 ] -> accuracy=0.88, loss=0.08
+>>> Training model (loop) complete [ epoch no.:9, time taken: 0:00:36 ] -> train accuracy:0.90, train loss:0.09 | val accuracy:0.64, val loss:0.35
+
+
+>>> FINAL ACCURACY:0.64 -> Time taken:0:06:30
+
+******************************** MODEL PERFORMANCE AND EVALUATION ********************************
+
+
+Accuracy of Training Data: 90.31250
+Loss of Training Data: 0.08937
+
+Accuracy of Validation Data: 64.06250
+Loss of Validation Data: 0.34673
+
+
+(deep-learning-scene-recognition) sohaparasnis@Sohas-Air CS6375_SceneRecognition %
